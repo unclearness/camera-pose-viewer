@@ -167,7 +167,7 @@ def draw_cameras(ax, camera_parameters, cam_width, cam_height, scale_focal, draw
         w2c = np.eye(4)
         w2c[:3, :] = np.array(cam_param['world2cam'])
         c2w = np.linalg.inv(w2c)
-        print(c2w)
+        #print(c2w)
         min_values, max_values =\
              draw_objects(ax, camera, min_values, max_values, colors[i], c2w)
         label = cam_param['name']
@@ -238,16 +238,28 @@ def parseArgs():
     #extrinsics = fs.getNode('extrinsic_parameters').mat()
     return args
 
-def drawAllPlt(args):
-    camera_parameters = load_json(args.camera_parameters)
+
+import tkinter
+
+camera_parameters = None
+cam_width = 1000
+cam_height = None
+scale_focal = None
+# root = tkinter.Tk()
+cam_scale = 1.0
+args = None
+
+def drawAllPlt():
+    ax.cla()
+    #global cam_scale
+    #cam_scale += 1
+    # print(cam_scale, cam_width)
     # for cam in j:
     #     camera_matrix = cam['K']
     #    w2c = 'world2cam'
-    cam_width = args.cam_width
-    cam_height = args.cam_height
-    scale_focal = args.scale_focal
 
-    min_values, max_values = draw_cameras(ax, camera_parameters, cam_width, cam_height,
+    cam_scale_val = cam_scale.get() if hasattr(cam_scale, "get")  else cam_scale
+    min_values, max_values = draw_cameras(ax, camera_parameters, cam_width*cam_scale_val, cam_height*cam_scale_val,
                                                 scale_focal)
 
     X_min = min_values[0]
@@ -284,7 +296,7 @@ def drawAll(canvas, args):
     canvas.draw()
     drawAllPlt(args)
 
-import tkinter
+
 import tkinter.messagebox as tkmsg
 
 import matplotlib.pyplot as plt
@@ -320,8 +332,15 @@ from functools import partial
            
 #         canvas.draw()  #キャンバスの描画
 
+#class Application(tk.Frame):
+
+
 if __name__ == "__main__":
     args = parseArgs()
+    cam_width = args.cam_width
+    cam_height = args.cam_height
+    scale_focal = args.scale_focal
+    camera_parameters = load_json(args.camera_parameters)
     try:
         root = tkinter.Tk()
         root.wm_title("Embedding in Tk")
@@ -331,12 +350,32 @@ if __name__ == "__main__":
 
         ax = fig.gca(projection='3d')
         ax.set_aspect("auto")
-        drawAllPlt(args)
+        drawAllPlt()
         #fig.add_subplot().plot(t, 2 * np.sin(2 * np.pi * t))
         #ax.plot(t, 2 * np.sin(2 * np.pi * t))
 
-        editBox = tkinter.Entry(width=20)
-        gridLabel = tkinter.Label(text="file path")
+        side_frame = tkinter.Frame(root)
+        row_frame1 = tkinter.Frame(side_frame)
+
+        editBox = tkinter.Entry(row_frame1, width=20)
+        editBoxLabel = tkinter.Label(row_frame1, text="file path")
+
+        row_frame2 = tkinter.Frame(side_frame)
+        #global cam_scale
+        cam_scale = tkinter.DoubleVar(root, 1.0)
+        camScale = tkinter.Scale(row_frame2,
+                    variable = cam_scale, 
+                    command = lambda x: drawAllPlt(),
+                    orient= tkinter.HORIZONTAL,   # 配置の向き、水平(HORIZONTAL)、垂直(VERTICAL)
+                    length = 300,           # 全体の長さ
+                    width = 20,             # 全体の太さ
+                    sliderlength = 20,      # スライダー（つまみ）の幅
+                    from_ = 0.1,            # 最小値（開始の値）
+                    to = 10,               # 最大値（終了の値）
+                    resolution=0.01,         # 変化の分解能(初期値:1)
+                    tickinterval=1         # 目盛りの分解能(初期値0で表示なし
+                    )
+        camScaleLabel = tkinter.Label(row_frame2, text="Camera size")
 
         #GridLabel.grid(row=1, column=1)
 
@@ -356,8 +395,13 @@ if __name__ == "__main__":
         # sure the UI controls are displayed as long as possible.
         button.pack(side=tkinter.BOTTOM)
         toolbar.pack(side=tkinter.BOTTOM, fill=tkinter.X)
+        side_frame.pack(side=tkinter.RIGHT)
+        row_frame1.pack(side=tkinter.TOP)
         editBox.pack(side=tkinter.RIGHT)
-        gridLabel.pack(side=tkinter.RIGHT)
+        editBoxLabel.pack(side=tkinter.RIGHT)
+        row_frame2.pack(side=tkinter.TOP)
+        camScale.pack(side=tkinter.RIGHT)
+        camScaleLabel.pack(side=tkinter.RIGHT)
         canvas.get_tk_widget().pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=1)
 
         tkinter.mainloop()
