@@ -167,7 +167,7 @@ def draw_cameras(ax, camera_parameters, cam_width, cam_height, scale_focal, draw
         w2c = np.eye(4)
         w2c[:3, :] = np.array(cam_param['world2cam'])
         c2w = np.linalg.inv(w2c)
-        #print(w2c, c2w)
+        print(c2w)
         min_values, max_values =\
              draw_objects(ax, camera, min_values, max_values, colors[i], c2w)
         label = cam_param['name']
@@ -205,7 +205,14 @@ def load_json(path):
     with open(path) as f:
         return json.load(f)
 
-def main():
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D  # pylint: disable=unused-variable
+
+fig = plt.figure()
+#ax = fig.gca(projection='3d')
+#ax.set_aspect("auto")
+
+def parseArgs():
     import argparse
 
     parser = argparse.ArgumentParser(description='Plot camera calibration extrinsics.',
@@ -229,25 +236,17 @@ def main():
     #square_size = fs.getNode('square_size').real()
     #camera_matrix = fs.getNode('camera_matrix').mat()
     #extrinsics = fs.getNode('extrinsic_parameters').mat()
+    return args
 
-    camera_matrix_list = []
-    c2w_list = []
-
+def drawAllPlt(args):
     camera_parameters = load_json(args.camera_parameters)
     # for cam in j:
     #     camera_matrix = cam['K']
     #    w2c = 'world2cam'
-
-    import matplotlib.pyplot as plt
-    from mpl_toolkits.mplot3d import Axes3D  # pylint: disable=unused-variable
-
-    fig = plt.figure()
-    ax = fig.gca(projection='3d')
-    ax.set_aspect("auto")
-
     cam_width = args.cam_width
     cam_height = args.cam_height
     scale_focal = args.scale_focal
+
     min_values, max_values = draw_cameras(ax, camera_parameters, cam_width, cam_height,
                                                 scale_focal)
 
@@ -269,13 +268,101 @@ def main():
     ax.set_xlabel('x')
     ax.set_ylabel('y')
     ax.set_zlabel('z')
-    ax.set_title('Extrinsic Parameters Visualization')
+    ax.set_title('Camera Pose Visualization')
 
-    plt.show()
-    print('Done')
+    #plt.show()
+    #print('Done')
 
 
-if __name__ == '__main__':
-    print(__doc__)
-    main()
-    cv.destroyAllWindows()
+#if __name__ == '__main__':
+#    print(__doc__)
+#    main()
+#    cv.destroyAllWindows()
+
+
+def drawAll(canvas, args):
+    canvas.draw()
+    drawAllPlt(args)
+
+import tkinter
+import tkinter.messagebox as tkmsg
+
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import (
+    FigureCanvasTkAgg, NavigationToolbar2Tk)
+from matplotlib.backend_bases import key_press_handler
+from functools import partial
+
+# def Quit():
+#        root.quit()
+#        root.destroy()
+
+# def DrawCanvas(canvas, ax, colors = "gray"):
+#     value = EditBox.get()
+#     if value != '':
+#         EditBox.delete(0, tkinter.END)
+#         ax.cla()#前の描画データの消去
+#         gridSize = int(value)
+#         gridSize = (gridSize * 2 + 1) #半区画の区切りを算出
+        
+#         #区画の線を引く
+#         for i in np.array(range(gridSize)) * 90.0:
+#             ax.plot(np.array([i, i]), np.array([0.0, (gridSize - 1) * 90]), color=colors, linestyle="dashed")
+#             ax.plot(np.array([0.0, (gridSize - 1) * 90]), np.array([i, i]), color=colors, linestyle="dashed")
+
+#             #斜めの線を引く
+#             if (i / 90.0) % 2 == 1:
+#                 ax.plot(np.array([0.0, i]), np.array([(gridSize - 1) * 90 - i, (gridSize - 1) * 90]), color=colors, linestyle="dashed")
+#                 ax.plot(np.array([(gridSize - 1) * 90 - i, (gridSize - 1) * 90]), np.array([0.0, i]), color=colors, linestyle="dashed")
+
+#                 ax.plot(np.array([(gridSize - 1) * 90, i]), np.array([i, (gridSize - 1) * 90]), color=colors, linestyle="dashed")
+#                 ax.plot(np.array([i, 0.0]), np.array([0.0, i]), color=colors, linestyle="dashed")
+           
+#         canvas.draw()  #キャンバスの描画
+
+if __name__ == "__main__":
+    args = parseArgs()
+    try:
+        root = tkinter.Tk()
+        root.wm_title("Embedding in Tk")
+
+        canvas = FigureCanvasTkAgg(fig, master=root)  # A tk.DrawingArea.
+        canvas.draw()
+
+        ax = fig.gca(projection='3d')
+        ax.set_aspect("auto")
+        drawAllPlt(args)
+        #fig.add_subplot().plot(t, 2 * np.sin(2 * np.pi * t))
+        #ax.plot(t, 2 * np.sin(2 * np.pi * t))
+
+        editBox = tkinter.Entry(width=20)
+        gridLabel = tkinter.Label(text="file path")
+
+        #GridLabel.grid(row=1, column=1)
+
+        # pack_toolbar=False will make it easier to use a layout manager later on.
+        toolbar = NavigationToolbar2Tk(canvas, root, pack_toolbar=False)
+        toolbar.update()
+
+        canvas.mpl_connect(
+            "key_press_event", lambda event: print(f"you pressed {event.key}"))
+        canvas.mpl_connect("key_press_event", key_press_handler)
+
+        button = tkinter.Button(master=root, text="Quit", command=root.quit)
+
+        # Packing order is important. Widgets are processed sequentially and if there
+        # is no space left, because the window is too small, they are not displayed.
+        # The canvas is rather flexible in its size, so we pack it last which makes
+        # sure the UI controls are displayed as long as possible.
+        button.pack(side=tkinter.BOTTOM)
+        toolbar.pack(side=tkinter.BOTTOM, fill=tkinter.X)
+        editBox.pack(side=tkinter.RIGHT)
+        gridLabel.pack(side=tkinter.RIGHT)
+        canvas.get_tk_widget().pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=1)
+
+        tkinter.mainloop()
+    except:
+        import traceback
+        traceback.print_exc()
+    finally:
+        cv.destroyAllWindows()
